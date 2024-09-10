@@ -140,7 +140,7 @@ CreateThread(function()
     -- Hook to handle vehicle parking
     hook.parkVehicleHook = exports.qbx_garages:RegisterHook('parkVehicle', function(payload)
         -- Check if the player has enough money to park the vehicle
-        local playerMoney = ox_inventory:GetItem(payload.source, 'money', nil, true)
+        local playerMoney = exports.ox_inventory:GetItem(payload.source, 'money', nil, true)
         local requiredAmount = 500 -- example amount required to park
         
         if playerMoney < requiredAmount then
