@@ -10,7 +10,7 @@ Registers a hook that allows you to intercept or modify behavior before and afte
 Hooks should return `true` to proceed with the action, or `false` to cancel the action. Additionally, hooks can modify some aspects of the action, depending on the payload.
 
 ```lua
-exports.qbx_garages:RegisterHook(eventName, callbackFunction)
+exports.qbx_garages:registerHook(eventName, callbackFunction)
 ```
 
 ### Parameters
@@ -93,7 +93,7 @@ local hook = {}
 
 CreateThread(function()
     -- Hook to handle vehicle parking
-    hook.parkVehicleHook = exports.qbx_garages:RegisterHook('parkVehicle', function(payload)
+    hook.parkVehicleHook = exports.qbx_garages:registerHook('parkVehicle', function(payload)
         local hasKey = exports['Renewed-Vehiclekeys']:hasKey(payload.source, payload.props.plate)
         if hasKey then
             exports['Renewed-Vehiclekeys']:removeKey(payload.source, payload.props.plate)
@@ -103,7 +103,7 @@ CreateThread(function()
     end)
 
     -- Hook to handle vehicle spawning
-    hook.spawnVehicleHook = exports.qbx_garages:RegisterHook('spawnVehicle', function(payload)
+    hook.spawnVehicleHook = exports.qbx_garages:registerHook('spawnVehicle', function(payload)
         -- Check if the player has the key before spawning the vehicle
         local hasKey = exports['Renewed-Vehiclekeys']:hasKey(payload.source, payload.playerVehicle.props.plate)
         if not hasKey then
@@ -114,7 +114,7 @@ CreateThread(function()
     end)
 
     -- Hook to handle events after vehicle spawning
-    hook.spawnedVehicleHook = exports.qbx_garages:RegisterHook('spawnedVehicle', function(payload)
+    hook.spawnedVehicleHook = exports.qbx_garages:registerHook('spawnedVehicle', function(payload)
         if payload.veh and payload.netId then
             -- Lock the vehicle after spawning
             Entity(payload.veh).state:set('vehicleLock', {lock = 2, sound = true}, true)
@@ -138,7 +138,7 @@ local hook = {}
 
 CreateThread(function()
     -- Hook to handle vehicle parking
-    hook.parkVehicleHook = exports.qbx_garages:RegisterHook('parkVehicle', function(payload)
+    hook.parkVehicleHook = exports.qbx_garages:registerHook('parkVehicle', function(payload)
         -- Check if the player has enough money to park the vehicle
         local playerMoney = exports.ox_inventory:GetItem(payload.source, 'money', nil, true)
         local requiredAmount = 500 -- example amount required to park
@@ -164,7 +164,7 @@ lib.print.debug(json.encode(hook))
 Removes previously registered hooks.
 
 ```lua
-exports.qbx_garages:RemoveHooks(hookId)
+exports.qbx_garages:removeHooks(hookId)
 ```
 
 ### Parameters
@@ -176,10 +176,10 @@ exports.qbx_garages:RemoveHooks(hookId)
 ### Example
 
 ```lua
-local hookId = exports.qbx_garages:RegisterHook('parkVehicle', function(payload)
+local hookId = exports.qbx_garages:registerHook('parkVehicle', function(payload)
     -- Hook logic here
 end)
 
 -- Later, remove the hook
-exports.qbx_garages:RemoveHooks(hookId)
+exports.qbx_garages:removeHooks(hookId)
 ```
