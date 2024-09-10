@@ -1,4 +1,5 @@
 {
   "exports": "Exports",
-  "callbacks": "Callbacks"
+  "callbacks": "Callbacks",
+  "hooks": "Hooks"
 }

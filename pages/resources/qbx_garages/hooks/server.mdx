@@ -1,0 +1,185 @@
+# Server Hooks
+
+## RegisterHook
+
+Registers a hook that allows you to intercept or modify behavior before and after specific events in the garage system. The following events can be hooked into:
+- `parkVehicle`: Triggered when a vehicle is parked.
+- `spawnVehicle`: Triggered when a vehicle is spawned.
+- `spawnedVehicle`: Triggered after a vehicle has been spawned.
+
+Hooks should return `true` to proceed with the action, or `false` to cancel the action. Additionally, hooks can modify some aspects of the action, depending on the payload.
+
+```lua
+exports.qbx_garages:RegisterHook(eventName, callbackFunction)
+```
+
+### Parameters
+
+- **eventName**: The name of the event to hook into. Available event names:
+  - `parkVehicle`
+  - `spawnVehicle`
+  - `spawnedVehicle`
+  
+- **callbackFunction**: A function that will be called when the event is triggered. The function receives a `payload` table with relevant data for the event. The callback should return `true` to allow the action, or `false` to cancel the action.
+
+---
+
+## Payload Structure
+
+Each hook provides a `payload` object that contains useful data related to the event. Here's the structure for each event:
+
+### `parkVehicle` Payload
+
+```lua
+{
+    source = number,         -- The player source ID
+    netId = number,          -- The network ID of the vehicle
+    props = table,           -- Vehicle properties (ox_lib format)
+    garageName = string,     -- The name of the garage where the vehicle is parked
+    vehicleId = number,      -- The vehicle's unique ID
+    owned = boolean,         -- Whether the player owns the vehicle
+    vehicle = entity         -- The vehicle entity itself
+}
+```
+
+### `spawnVehicle` Payload
+
+```lua
+{
+    source = number,             -- The player source ID
+    vehicleId = number,          -- The vehicle's unique ID
+    garage = table,              -- Garage details
+    garageName = string,         -- The name of the garage
+    accessPointIndex = number,   -- The index of the access point in the garage
+    garageType = string,         -- The type of garage (e.g., "normal", "depot")
+    spawnCoords = vector3,       -- The coordinates where the vehicle will spawn
+    distanceCheck = number,      -- The distance check for nearby vehicles
+    doorsLocked = boolean,       -- Whether the vehicle's doors should be locked
+    warpPed = boolean,           -- Whether the player should be warped into the vehicle
+    vehiclekeys = boolean,       -- Whether the player should be given keys to the vehicle
+    playerVehicle = table        -- The player's vehicle data (ox_lib format)
+}
+```
+
+### `spawnedVehicle` Payload
+
+```lua
+{
+    source = number,             -- The player source ID
+    vehicleId = number,          -- The vehicle's unique ID
+    garage = table,              -- Garage details
+    garageName = string,         -- The name of the garage
+    accessPointIndex = number,   -- The index of the access point in the garage
+    garageType = string,         -- The type of garage (e.g., "normal", "depot")
+    spawnCoords = vector3,       -- The coordinates where the vehicle was spawned
+    distanceCheck = number,      -- The distance check for nearby vehicles
+    doorsLocked = boolean,       -- Whether the vehicle's doors are locked
+    warpPed = boolean,           -- Whether the player was warped into the vehicle
+    vehiclekeys = boolean,       -- Whether the player has keys to the vehicle
+    playerVehicle = table,       -- The player's vehicle data (ox_lib format)
+    veh = entity,                -- The vehicle entity itself
+    netId = number               -- The network ID of the spawned vehicle
+}
+```
+
+---
+
+## Example Usage
+
+### Example 1: Basic Hook Implementation
+
+```lua
+local hook = {}
+
+CreateThread(function()
+    -- Hook to handle vehicle parking
+    hook.parkVehicleHook = exports.qbx_garages:RegisterHook('parkVehicle', function(payload)
+        local hasKey = exports['Renewed-Vehiclekeys']:hasKey(payload.source, payload.props.plate)
+        if hasKey then
+            exports['Renewed-Vehiclekeys']:removeKey(payload.source, payload.props.plate)
+            exports.qbx_core:Notify(payload.source, 'The keys for the vehicle with plate '..payload.props.plate..' have been removed.', 'inform')
+        end
+        return true
+    end)
+
+    -- Hook to handle vehicle spawning
+    hook.spawnVehicleHook = exports.qbx_garages:RegisterHook('spawnVehicle', function(payload)
+        -- Check if the player has the key before spawning the vehicle
+        local hasKey = exports['Renewed-Vehiclekeys']:hasKey(payload.source, payload.playerVehicle.props.plate)
+        if not hasKey then
+            exports['Renewed-Vehiclekeys']:addKey(payload.source, payload.playerVehicle.props.plate)
+            exports.qbx_core:Notify(payload.source, 'The keys for the vehicle with plate '..payload.playerVehicle.props.plate..' have been given to you.', 'inform')
+        end
+        return true
+    end)
+
+    -- Hook to handle events after vehicle spawning
+    hook.spawnedVehicleHook = exports.qbx_garages:RegisterHook('spawnedVehicle', function(payload)
+        if payload.veh and payload.netId then
+            -- Lock the vehicle after spawning
+            Entity(payload.veh).state:set('vehicleLock', {lock = 2, sound = true}, true)
+            exports.qbx_core:Notify(payload.source, 'Safe travels.', 'inform')
+        end
+        return true
+    end)
+end)
+
+lib.print.debug(json.encode(hook))
+```
+
+---
+
+### Example 2: Hook Returning `false` to Cancel an Action
+
+In this example, the hook checks if the player has enough money to park the vehicle. If they don't, the action is canceled.
+
+```lua
+local hook = {}
+
+CreateThread(function()
+    -- Hook to handle vehicle parking
+    hook.parkVehicleHook = exports.qbx_garages:RegisterHook('parkVehicle', function(payload)
+        -- Check if the player has enough money to park the vehicle
+        local playerMoney = ox_inventory:GetItem(payload.source, 'money', nil, true)
+        local requiredAmount = 500 -- example amount required to park
+        
+        if playerMoney < requiredAmount then
+            exports.qbx_core:Notify(payload.source, 'You don\'t have enough money to park this vehicle.', 'error')
+            return false -- Cancel the parking action
+        else
+            exports.ox_inventory:RemoveItem(payload.source, 'money', requiredAmount)
+        end
+        
+        return true -- Proceed with parking if the player has enough money
+    end)
+end)
+
+lib.print.debug(json.encode(hook))
+```
+
+---
+
+## RemoveHooks
+
+Removes previously registered hooks.
+
+```lua
+exports.qbx_garages:RemoveHooks(hookId)
+```
+
+### Parameters
+
+- **hookId**: The ID of the hook that was returned when registering it.
+
+---
+
+### Example
+
+```lua
+local hookId = exports.qbx_garages:RegisterHook('parkVehicle', function(payload)
+    -- Hook logic here
+end)
+
+-- Later, remove the hook
+exports.qbx_garages:RemoveHooks(hookId)
+```
